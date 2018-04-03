@@ -5,7 +5,7 @@ Telegram Bot API to deliver quotes from
 [the Clojure Quotes repo](https://github.com/Azel4231/clojure-quotes)
 to the Telegram Instant Messaging App.
 
-You can add the bot on Telegram: Clojure Quotes (@cljqbot)
+You can add the bot on Telegram: [Clojure Quotes (@cljqbot)](https://telegram.me/cljqbot)
 
 At the moment I have to manually restart the bot when it's no longer working,
 so don't worry if it does not react to your commands immediately. :)
