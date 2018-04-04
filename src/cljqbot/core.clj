@@ -156,7 +156,7 @@
   (let [url (:url (:reference qt))]
     (if url
       (str "\n("
-           "<a href=\"" (:url (:reference qt)) "\">"
+           "<a href=\"" url "\">"
            "Source"
            "</a>"
            (format-time qt)
