@@ -14,9 +14,12 @@
 (defonce offset (atom -1)) ; -1 will only retrieve the latest update
 (defonce running (atom true))
 
+(defonce served (atom 0)) ; how many quotes were delivered
+
 
 (defn log [& args]
-  (apply println (str (Date.) "> ") args))
+  (apply println (str (Date.) "> ") args)
+  (println))
 
 
 (defn async-post [path params]
@@ -37,7 +40,7 @@
       (clojure.pprint/pprint body writer)
       (.write writer "\n\n"))
     (when (or error (not= status 200))
-      (log "Failed. Status:" status "Error:" error))
+      (log :WARN "Failed. Status:" status "Error:" error "- Body: " body))
     (or body {:ok false})))
   
 
@@ -85,6 +88,9 @@
   (or (command? upd "help")
       (command? upd "start")))
 
+(defn status-command? [upd]
+  (command? upd "status"))
+
 
 (declare random-formatted-quote)
 
@@ -101,15 +107,23 @@
 (defn post-help [upd]
   (send-html-message upd
                      (str "/help - displays this message\n"
-                          "/quote - displays a random quote")))
+                          "/quote - displays a random quote"))
+  (log :INFO "Posted help for: " upd))
 
 (defn post-quote
   "Posts a random clojure quote to the chat that caused the
    given update."
   [upd]
-  (let [from (get-in upd [:message :from :first_name])
-        clj-quote (random-formatted-quote)]
-    (send-html-message upd clj-quote)))
+  (let [clj-quote (random-formatted-quote)]
+    (send-html-message upd clj-quote)
+    (swap! served inc)
+    (log :INFO "Posted quote for:" upd)))
+
+(defn post-status
+  "Posts the bot and JVM status to the chat"
+  [upd]
+  (send-html-message upd (str "<i>Delivered Quotes:</i> <b>" @served "</b>"))
+  (log :INFO "Posted status for:" upd))
 
 
 (defn process
@@ -117,7 +131,8 @@
   [upd]
   (cond
     (quote-command? upd) (post-quote upd)
-    (help-command? upd) (post-help upd)))
+    (help-command? upd) (post-help upd)
+    (status-command? upd) (post-status upd)))
 
 
 (defn execute
@@ -132,15 +147,22 @@
 
 
 (defn start-bot []
+  (log "Called start-bot")
   (reset! running true)
   (future (while @running (execute))))
 
 (defn stop-bot []
+  (log "Called stop-bot")
   (reset! running false))
 
 
 (defn -main [& args]
-  (while true (execute)))
+  (log "Starting Clojure Quotes Bot")
+  (try
+    (while true (execute))
+    (catch Exception e
+      (log :ERROR "Bot crashed. :( ->" (.getMessage e))
+      (.printStackTrace e))))
 
 
 ;; quote stuff
