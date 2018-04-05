@@ -3,7 +3,8 @@
             [org.httpkit.server :as server]
             [org.httpkit.client :as http]
             [clojure.data.json :as json])
-  (:import [java.io FileWriter])
+  (:import [java.io FileWriter]
+           [java.util Date])
   (:gen-class))
 
 
@@ -12,6 +13,10 @@
 (def poll-seconds 10)
 (defonce offset (atom -1)) ; -1 will only retrieve the latest update
 (defonce running (atom true))
+
+
+(defn log [& args]
+  (apply println (str (Date.) "> ") args))
 
 
 (defn async-post [path params]
@@ -31,10 +36,9 @@
                           "body:\n"))
       (clojure.pprint/pprint body writer)
       (.write writer "\n\n"))
-    (if (or error (not= status 200))
-      (println "Failed. Status:" status "Error:" error))
-    (or body
-        {:ok false})))
+    (when (or error (not= status 200))
+      (log "Failed. Status:" status "Error:" error))
+    (or body {:ok false})))
   
 
 
