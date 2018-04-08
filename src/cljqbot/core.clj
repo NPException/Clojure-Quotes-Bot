@@ -22,14 +22,23 @@
   (println))
 
 
+(defn convertJson [content]
+  (try
+    (json/read-str content :key-fn keyword)
+    (catch Exception e
+      (log :ERROR
+           "Could not convert JSON to edn.\n"
+           (.getMessage e)
+           "\n Json was:" content
+           "\n -> StackTrace:" (.getStackTrace e)))))
+
+
 (defn async-post [path params]
   (http/post (str base-url path) {:form-params params}))
 
 (defn post [path params]
   (let [resp @(async-post path params)
-        resp (update resp :body #(and
-                                  %
-                                  (json/read-str % :key-fn keyword)))
+        resp (update resp :body #(and % (convertJson %)))
         {:keys [status error body]} resp]
     #_(with-open [writer (FileWriter. "responses.txt" true)]
       (.write writer (str "POST:   " path "\n"
@@ -161,8 +170,8 @@
   (try
     (while true (execute))
     (catch Exception e
-      (log :ERROR "Bot crashed. :( ->" (.getMessage e))
-      (.printStackTrace e))))
+      (log :ERROR "Bot crashed. ->" (.getMessage e)
+           " -> StackTrace:" (.getStackTrace e)))))
 
 
 ;; quote stuff
