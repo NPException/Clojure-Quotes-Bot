@@ -3,4 +3,4 @@
   (:gen-class))
 
 (defn -main [& args]
-  @telegram/start-bot!)
+  @(telegram/start-bot!))
