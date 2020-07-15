@@ -1,10 +1,8 @@
 (ns cljqbot.core
   (:require [clojure.string :as string]
-            [org.httpkit.server :as server]
             [org.httpkit.client :as http]
             [clojure.data.json :as json])
-  (:import [java.io FileWriter]
-           [java.util Date])
+  (:import (java.util Date))
   (:gen-class))
 
 
@@ -67,12 +65,6 @@
           result))))
 
 
-(defn from-user?
-  "Checks if the update came from a normal user (not a bot)"
-  [upd]
-  (not (get-in upd [:message :is_bot])))
-
-
 (defn text
   "Retrieves the text from an update map"
   [upd]
@@ -105,7 +97,6 @@
 
 (defn send-html-message [upd message]
   (let [chat-id (get-in upd [:message :chat :id])]
-    ;; TODO: return path and parameter-map
     (async-post "sendMessage"
                 {:chat_id chat-id
                  :text message
@@ -144,23 +135,19 @@
     (status-command? upd) (post-status upd)))
 
 
-(defn execute
+(defn execute!
   "fetches updates and processes them"
   []
-  ;; TODO: take returned path-param combos,
-  ;;       merge them as needed,
-  ;;       post them,
-  ;;       wait 1 to 3 seconds (3 if an involved chat was a group)
   (doseq [upd (get-updates)]
     (process upd)))
 
 
-(defn start-bot []
+(defn start-bot! []
   (log "Called start-bot")
   (reset! running true)
-  (future (while @running (execute))))
+  (future (while @running (execute!))))
 
-(defn stop-bot []
+(defn stop-bot! []
   (log "Called stop-bot")
   (reset! running false))
 
@@ -168,7 +155,7 @@
 (defn -main [& args]
   (log "Starting Clojure Quotes Bot")
   (try
-    (while true (execute))
+    (while true (execute!))
     (catch Exception e
       (log :ERROR "Bot crashed. ->" (.getMessage e)
            " -> StackTrace:" (.getStackTrace e)))))
@@ -208,5 +195,3 @@
    ready to be sent to Telegram"
   []
   (format-quote (random-quote)))
-
-;; NOTES: - send single reply for all updates from the same chat?
