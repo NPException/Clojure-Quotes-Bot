@@ -3,6 +3,8 @@
             [clj-time.core :as t])
   (:import [clojure.lang IDeref]))
 
+(defonce served (atom 0)) ; how many quotes were delivered
+
 
 (defn cached
   "Returns an IDeref that holds a value for the given amount of time before
