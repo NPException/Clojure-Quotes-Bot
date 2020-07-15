@@ -31,7 +31,7 @@
 
 ;; telegram interaction
 
-(def ^:private base-url (str "https://api.telegram.org/bot" (slurp "telegram-api-token") "/"))
+(def ^:private base-url (delay (str "https://api.telegram.org/bot" (slurp "telegram-api-token") "/")))
 (def ^:private poll-seconds 10)
 (defonce ^:private offset (atom -1)) ; -1 will only retrieve the latest update
 (defonce ^:private running (atom true))
@@ -47,7 +47,7 @@
 
 (defn ^:private async-post
   [path params]
-  (http/post (str base-url path) {:form-params params}))
+  (http/post (str @base-url path) {:form-params params}))
 
 (defn ^:private post
   [path params]
