@@ -1,13 +1,13 @@
 (ns cljqbot.core
-  (:require [clojure.string :as string]
+  (:require [cljqbot.quotes :as quotes]
+            [clojure.string :as string]
+            [clojure.tools.logging :as log]
             [org.httpkit.client :as http]
             [clojure.data.json :as json])
-  (:import (java.util Date))
   (:gen-class))
 
 
-(def base-url (let [token (slurp "telegram-api-token")]
-                (str "https://api.telegram.org/bot" token "/")))
+(def base-url (str "https://api.telegram.org/bot" (slurp "telegram-api-token") "/"))
 (def poll-seconds 10)
 (defonce offset (atom -1)) ; -1 will only retrieve the latest update
 (defonce running (atom true))
@@ -15,20 +15,11 @@
 (defonce served (atom 0)) ; how many quotes were delivered
 
 
-(defn log [& args]
-  (apply println (str (Date.) "> ") args)
-  (println))
-
-
 (defn convertJson [content]
   (try
     (json/read-str content :key-fn keyword)
     (catch Exception e
-      (log :ERROR
-           "Could not convert JSON to edn.\n"
-           (.getMessage e)
-           "\n Json was:" content
-           "\n -> StackTrace:" (.getStackTrace e)))))
+      (log/error e (str "Could not convert JSON to edn: " content)))))
 
 
 (defn async-post [path params]
@@ -47,7 +38,7 @@
       (clojure.pprint/pprint body writer)
       (.write writer "\n\n"))
     (when (or error (not= status 200))
-      (log :WARN "Failed. Status:" status "Error:" error "- Body: " body))
+      (log/warn (str "Failed. Status: " status " Error: " error " - Body: " body)))
     (or body {:ok false})))
   
 
@@ -108,7 +99,7 @@
   (send-html-message upd
                      (str "/help - displays this message\n"
                           "/quote - displays a random quote"))
-  (log :INFO "Posted help for: " upd))
+  (log/debug (str "Posted help for: " upd)))
 
 (defn post-quote
   "Posts a random clojure quote to the chat that caused the
@@ -117,13 +108,13 @@
   (let [clj-quote (random-formatted-quote)]
     (send-html-message upd clj-quote)
     (swap! served inc)
-    (log :INFO "Posted quote for:" upd)))
+    (log/debug (str "Posted quote for: " upd))))
 
 (defn post-status
   "Posts the bot and JVM status to the chat"
   [upd]
   (send-html-message upd (str "<i>Delivered Quotes:</i> <b>" @served "</b>"))
-  (log :INFO "Posted status for:" upd))
+  (log/debug (str "Posted status for: " upd)))
 
 
 (defn process
@@ -143,33 +134,24 @@
 
 
 (defn start-bot! []
-  (log "Called start-bot")
+  (log/info (str "Called " *ns* "/start-bot!"))
   (reset! running true)
-  (future (while @running (execute!))))
+  (future
+    (try
+      (while @running (execute!))
+      (catch Exception e
+        (log/error e "Telegram bot crashed")))))
 
 (defn stop-bot! []
-  (log "Called stop-bot")
+  (log/info (str "Called " *ns* "/stop-bot!"))
+  (log/info "Called stop-bot")
   (reset! running false))
 
 
 (defn -main [& args]
-  (log "Starting Clojure Quotes Bot")
-  (try
-    (while true (execute!))
-    (catch Exception e
-      (log :ERROR "Bot crashed. ->" (.getMessage e)
-           " -> StackTrace:" (.getStackTrace e)))))
+  @start-bot!)
 
-
-;; quote stuff
-(defonce clj-quotes
-  (-> (slurp "https://github.com/Azel4231/clojure-quotes/raw/master/quotes.edn")
-      (string/replace "#:clojure-quotes.core" "")
-      read-string))
-
-(defn random-quote []
-  (clj-quotes (rand-int (count clj-quotes))))
-
+;; format stuff
 (defn format-time [qt]
   (let [time (:time (:reference qt))]
     (if time (str ", Time: " time) "")))
@@ -194,4 +176,4 @@
   "Returns a random clojure quote, markdown formatted,
    ready to be sent to Telegram"
   []
-  (format-quote (random-quote)))
+  (format-quote (quotes/random-quote)))
