@@ -12,3 +12,4 @@ pom.xml.asc
 .hgignore
 .hg/
 telegram-api-token
+discord-api-token

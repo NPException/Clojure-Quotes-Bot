@@ -24,9 +24,11 @@
 
 (defn ^:private fetch-quotes
   []
-  (-> (slurp "https://github.com/Azel4231/clojure-quotes/raw/master/quotes.edn")
-      (string/replace "#:clojure-quotes.core" "")
-      read-string))
+  (let [quotes (-> (slurp "https://github.com/Azel4231/clojure-quotes/raw/master/quotes.edn")
+                   (string/replace "#:clojure-quotes.core" "")
+                   read-string)]
+    {:all       quotes
+     :by-author (group-by #(string/lower-case (:quotee %)) quotes)})) ;;TODO: make use of this by adding the capability of requesting a quote by someone
 
 
 (def ^:private clj-quotes
@@ -35,6 +37,6 @@
 
 (defn random-quote
   []
-  (let [quotes @clj-quotes]
+  (let [quotes (:all @clj-quotes)]
     (swap! requested inc)
     (quotes (rand-int (count quotes)))))

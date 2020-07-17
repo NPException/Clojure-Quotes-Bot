@@ -1,6 +1,10 @@
 (ns cljqbot.core
-  (:require [cljqbot.telegram :as telegram])
+  (:require [cljqbot.telegram :as telegram]
+            [cljqbot.discord :as discord])
   (:gen-class))
 
 (defn -main [& args]
-  @(telegram/start-bot!))
+  (doseq [task [(telegram/start-bot!)
+                (discord/start-bot!)]]
+    ;; only exit program if both bots have stopped
+    @task))
