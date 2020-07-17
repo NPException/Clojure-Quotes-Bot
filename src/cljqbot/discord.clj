@@ -10,7 +10,8 @@
 
 (def ^:private token (delay (slurp "discord-api-token")))
 (def ^:private bot-id "733710171599143002")
-(def ^:private bot-mention (format/discord-mention bot-id))
+(def ^:private bot-mentions #{(str "<@!" bot-id ">")
+                              (str "<@" bot-id ">")})
 
 (defn ^:private me?
   [user-or-id]
@@ -35,7 +36,7 @@
 (defn ^:private send-quote
   [_event-type {:keys [channel-id content author] :as _event-data}]
   (when (and (not (me? author))
-             (string/starts-with? content bot-mention))
+             (some #(string/includes? content %) bot-mentions))
     (m/create-message!
       (:messaging @state) channel-id
       :content (format/discord-markdown (quotes/random-quote)))))
@@ -49,7 +50,7 @@
   []
   (when-let [state @state]
     (reset! state nil)
-    (log/info (str "Called " *ns* "/stop-bot!"))
+    (log/info (str "Called cljqbot.discord/stop-bot!"))
     (m/stop-connection! (:messaging state))
     (c/disconnect-bot! (:connection state))
     (a/close! (:event state))))
@@ -57,7 +58,7 @@
 
 (defn start-bot!
   []
-  (log/info (str "Called " *ns* "/start-bot!"))
+  (log/info (str "Called cljqbot.discord/start-bot!"))
   (future
     (when (nil? @state)
       (let [event-ch (a/chan 100)

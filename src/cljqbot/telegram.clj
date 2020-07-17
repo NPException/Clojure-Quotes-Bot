@@ -138,7 +138,7 @@
 
 (defn start-bot!
   []
-  (log/info (str "Called " *ns* "/start-bot!"))
+  (log/info (str "Called cljqbot.telegram/start-bot!"))
   (reset! running true)
   (future
     (try
@@ -148,5 +148,5 @@
 
 (defn stop-bot!
   []
-  (log/info (str "Called " *ns* "/stop-bot!"))
+  (log/info (str "Called cljqbot.telegram/stop-bot!"))
   (reset! running false))
