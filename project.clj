@@ -3,12 +3,13 @@
   :url "https://github.com/NPException/Clojure-Quotes-Bot"
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"}
+  :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/tools.logging "1.1.0"]
                  [org.suskalo/discljord "1.1.1"]
                  [clj-time "0.15.2"]
-                 [http-kit "2.4.0-alpha5"]
-                 [org.clojure/data.json "0.2.7"]]
+                 [http-kit "2.4.0-alpha6"]
+                 [org.clojure/data.json "1.0.0"]]
   :main ^:skip-aot cljqbot.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
