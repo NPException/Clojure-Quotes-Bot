@@ -1,35 +1,10 @@
 (ns cljqbot.telegram
   (:require [cljqbot.quotes :as quotes]
+            [cljqbot.format :as format]
             [clojure.string :as string]
             [clojure.tools.logging :as log]
             [org.httpkit.client :as http]
             [clojure.data.json :as json]))
-
-;; formatting functions
-
-(defn ^:private format-source
-  [source]
-  (let [url (:url source)
-        time (:time source)]
-    (when url
-      (str "\n("
-           "<a href=\"" url "\">"
-           "Source"
-           "</a>"
-           (when time (str ", Time: " time))
-           ")"))))
-
-(defn ^:private random-formatted-quote
-  "Returns a random clojure quote, markdown formatted,
-   ready to be sent to Telegram"
-  []
-  (let [qt (quotes/random-quote)]
-    (str "<i>\"" (:text qt) "\"</i>\n"
-         "<b>" (:quotee qt)  "</b>"
-         (format-source (:reference qt)))))
-
-
-;; telegram interaction
 
 (def ^:private base-url (delay (str "https://api.telegram.org/bot" (slurp "telegram-api-token") "/")))
 (def ^:private poll-seconds 10)
@@ -133,15 +108,15 @@
   "Posts a random clojure quote to the chat that caused the
    given update."
   [upd]
-  (let [clj-quote (random-formatted-quote)]
-    (send-html-message upd clj-quote)
-    (swap! quotes/served inc)
-    (log/debug (str "Posted quote for: " upd))))
+  (->> (quotes/random-quote)
+       format/telegram-html
+       (send-html-message upd))
+  (log/debug (str "Posted quote for: " upd)))
 
 (defn ^:private post-status
   "Posts the bot and JVM status to the chat"
   [upd]
-  (send-html-message upd (str "<i>Delivered Quotes:</i> <b>" @quotes/served "</b>"))
+  (send-html-message upd (str "<i>Requested Quotes:</i> <b>" @quotes/requested "</b>"))
   (log/debug (str "Posted status for: " upd)))
 
 
@@ -161,7 +136,8 @@
     (process upd)))
 
 
-(defn start-bot! []
+(defn start-bot!
+  []
   (log/info (str "Called " *ns* "/start-bot!"))
   (reset! running true)
   (future
@@ -170,7 +146,7 @@
       (catch Exception e
         (log/error e "Telegram bot crashed")))))
 
-(defn stop-bot! []
+(defn stop-bot!
+  []
   (log/info (str "Called " *ns* "/stop-bot!"))
-  (log/info "Called stop-bot")
   (reset! running false))

@@ -3,7 +3,7 @@
             [clj-time.core :as t])
   (:import [clojure.lang IDeref]))
 
-(defonce served (atom 0)) ; how many quotes were delivered
+(defonce requested (atom 0)) ; how many quotes were delivered
 
 
 (defn cached
@@ -36,4 +36,5 @@
 (defn random-quote
   []
   (let [quotes @clj-quotes]
+    (swap! requested inc)
     (quotes (rand-int (count quotes)))))
