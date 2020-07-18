@@ -48,12 +48,12 @@
 
 (defn stop-bot!
   []
-  (when-let [state @state]
+  (when-let [current-state @state]
     (reset! state nil)
     (log/info (str "Called cljqbot.discord/stop-bot!"))
-    (m/stop-connection! (:messaging state))
-    (c/disconnect-bot! (:connection state))
-    (a/close! (:event state))))
+    (m/stop-connection! (:messaging current-state))
+    (c/disconnect-bot! (:connection current-state))
+    (a/close! (:event current-state))))
 
 
 (defn start-bot!
