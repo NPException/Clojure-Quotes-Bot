@@ -8,23 +8,9 @@
             [cljqbot.format :as format]
             [clojure.string :as string]))
 
-(def ^:private token (delay (string/trim (slurp "discord-api-token"))))
-(def ^:private bot-id "733710171599143002")
-(def ^:private bot-mentions #{(str "<@!" bot-id ">")
-                              (str "<@" bot-id ">")})
-
-(defn ^:private me?
-  [user-or-id]
-  (or (= user-or-id bot-id)
-      (= (:id user-or-id) bot-id)))
-
-
-(defonce ^:private state (atom nil))
-
-
 #_(defn ^:private log-event [event-type event-data]
   (try
-    (let [file (io/file "events" (str (System/currentTimeMillis) "-" (name event-type) ".edn"))]
+    (let [file (clojure.java.io/file "events" (str (System/currentTimeMillis) "-" (name event-type) ".edn"))]
       (-> file .getParentFile .mkdirs)
       (spit
         file
@@ -33,17 +19,54 @@
       (.printStackTrace e))))
 
 
+
+(def ^:private token (delay (string/trim (slurp "discord-api-token"))))
+
+;; state will look like this
+;  {:connection connection-ch
+;   :event      event-ch
+;   :messaging  messaging-ch
+;   :id "733710171599143002"
+;   :mentions #{"<@!733710171599143002>"
+;               "<@733710171599143002>"}}
+
+(defonce ^:private state (atom nil))
+
+
+(defn ^:private me?
+  "Returns whether or not the given user/id is this bot."
+  [user-or-id]
+  (let [bot-id (:id @state)]
+    (or (= user-or-id bot-id)
+        (= (:id user-or-id) bot-id))))
+
+(defn ^:private mentioned?
+  "Returns whether or not this bot has been mentioned in the content."
+  [content]
+  (some #(string/includes? content %) (:mentions @state)))
+
+
+(defn ^:private on-ready
+  [_event-type {:keys [user] :as _event-data}]
+  (when-not (:id @state)
+    (swap! state assoc
+           :id (:id user)
+           :mentions #{(str "<@!" (:id user) ">")
+                       (str "<@" (:id user) ">")})))
+
+
 (defn ^:private send-quote
   [_event-type {:keys [channel-id content author] :as _event-data}]
   (when (and (not (me? author))
-             (some #(string/includes? content %) bot-mentions))
+             (mentioned? content))
     (m/create-message!
       (:messaging @state) channel-id
       :content (format/discord-markdown (quotes/random-quote)))))
 
 
 (def ^:private handlers
-  {:message-create [#'send-quote]})
+  {:message-create [#'send-quote]
+   :ready          [#'on-ready]})
 
 
 (defn stop-bot!
