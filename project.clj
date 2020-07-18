@@ -6,6 +6,7 @@
   :pedantic? :abort
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/tools.logging "1.1.0"]
+                 [ch.qos.logback/logback-classic "1.2.3"]
                  [org.suskalo/discljord "1.1.1"]
                  [clj-time "0.15.2"]
                  [http-kit "2.4.0-alpha6"]
