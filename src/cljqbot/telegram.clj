@@ -6,7 +6,7 @@
             [org.httpkit.client :as http]
             [clojure.data.json :as json]))
 
-(def ^:private base-url (delay (str "https://api.telegram.org/bot" (slurp "telegram-api-token") "/")))
+(def ^:private base-url (delay (str "https://api.telegram.org/bot" (string/trim (slurp "telegram-api-token")) "/")))
 (def ^:private poll-seconds 10)
 (defonce ^:private offset (atom -1)) ; -1 will only retrieve the latest update
 (defonce ^:private running (atom true))

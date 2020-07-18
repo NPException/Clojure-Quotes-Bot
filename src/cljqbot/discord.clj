@@ -8,7 +8,7 @@
             [cljqbot.format :as format]
             [clojure.string :as string]))
 
-(def ^:private token (delay (slurp "discord-api-token")))
+(def ^:private token (delay (string/trim (slurp "discord-api-token"))))
 (def ^:private bot-id "733710171599143002")
 (def ^:private bot-mentions #{(str "<@!" bot-id ">")
                               (str "<@" bot-id ">")})
