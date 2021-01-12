@@ -4,12 +4,13 @@
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"}
   :pedantic? :abort
-  :dependencies [[org.clojure/clojure "1.10.1"]
+  :dependencies [[org.clojure/clojure "1.10.2-rc1"]
                  [org.clojure/tools.logging "1.1.0"]
                  [ch.qos.logback/logback-classic "1.2.3"]
                  [org.suskalo/discljord "1.1.1"]
                  [clj-time "0.15.2"]
-                 [http-kit "2.4.0-alpha6"]
+                 [http-kit "2.5.0"]
+                 [metosin/reitit "0.5.11"]
                  [org.clojure/data.json "1.0.0"]]
   :main ^:skip-aot cljqbot.core
   :target-path "target/%s"

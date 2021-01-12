@@ -47,3 +47,22 @@
   (str "> " (:text qt) "\n"
        "_**~ " (:quotee qt) "**_"
        (source->discord-markdown (:reference qt))))
+
+
+;; PLAIN TEXT
+
+(defn ^:private source->plain-text
+  [source]
+  (let [url (:url source)
+        time (:time source)]
+    (when url
+      (str "\n\nSource:"
+           "\n  " url
+           (when time (str "\n  Timestamp: " time))))))
+
+(defn plain-text
+  "Formats a quote in plain text"
+  [qt]
+  (str (:text qt) \newline
+       "~ " (:quotee qt)
+       (source->plain-text (:reference qt))))
