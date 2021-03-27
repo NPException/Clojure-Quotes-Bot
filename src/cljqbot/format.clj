@@ -1,4 +1,5 @@
-(ns cljqbot.format)
+(ns cljqbot.format
+  (:require [clojure.string :as string]))
 
 ;; TELEGRAM
 
@@ -41,10 +42,16 @@
            (when time (str ",\n Timestamp: " time))
            ")"))))
 
+
+(defn ^:private discord-block-quote
+  "Formats the given text as a discord compatible block quote section"
+  [text]
+  (str "> " (string/replace text "\n" "\n> ")))
+
 (defn discord-markdown
   "Formats a quote with Discord compatible Markdown"
   [qt]
-  (str "> " (:text qt) "\n"
+  (str (discord-block-quote (:text qt)) "\n"
        "_**~ " (:quotee qt) "**_"
        (source->discord-markdown (:reference qt))))
 
