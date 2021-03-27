@@ -4,7 +4,7 @@
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"}
   :pedantic? :abort
-  :dependencies [[org.clojure/clojure "1.10.2-rc1"]
+  :dependencies [[org.clojure/clojure "1.10.3"]
                  [org.clojure/tools.logging "1.1.0"]
                  [ch.qos.logback/logback-classic "1.2.3"]
                  [org.suskalo/discljord "1.1.1"]

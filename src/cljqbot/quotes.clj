@@ -1,5 +1,6 @@
 (ns cljqbot.quotes
   (:require [clojure.string :as string]
+            [clojure.walk :as walk]
             [clj-time.core :as t])
   (:import [clojure.lang IDeref]))
 
@@ -22,11 +23,19 @@
             @cache))))))
 
 
+(defn ^:private trim-strings
+  [quotes]
+  (walk/postwalk
+    #(if (string? %) (string/trim %) %)
+    quotes))
+
+
 (defn ^:private fetch-quotes
   []
   (let [quotes (-> (slurp "https://github.com/Azel4231/clojure-quotes/raw/master/quotes.edn")
                    (string/replace "#:clojure-quotes.core" "")
-                   read-string)]
+                   read-string
+                   trim-strings)]
     {:all       quotes
      :by-author (group-by #(string/lower-case (:quotee %)) quotes)})) ;;TODO: make use of this by adding the capability of requesting a quote by someone
 
@@ -40,3 +49,10 @@
   (let [quotes (:all @clj-quotes)]
     (swap! requested inc)
     (quotes (rand-int (count quotes)))))
+
+
+(comment
+
+  (def quotes (:all (fetch-quotes)))
+
+  )
