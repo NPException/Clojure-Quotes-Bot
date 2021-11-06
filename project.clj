@@ -8,10 +8,10 @@
                  [org.clojure/tools.logging "1.1.0"]
                  [ch.qos.logback/logback-classic "1.2.3"]
                  [org.suskalo/discljord "1.1.1"]
-                 [clj-time "0.15.2"]
-                 [http-kit "2.5.0"]
+                 [tick "0.5.0-RC4"]
+                 [http-kit "2.6.0-alpha1"]
                  [metosin/reitit "0.5.11"]
-                 [org.clojure/data.json "1.0.0"]]
+                 [org.clojure/data.json "2.4.0"]]
   :main ^:skip-aot cljqbot.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})

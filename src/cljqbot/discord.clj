@@ -6,6 +6,9 @@
             [discljord.messaging :as m]
             [discljord.events :as e]
             [cljqbot.format :as format]
+            [clojure.stacktrace :as st]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.string :as string]))
 
 #_(defn ^:private log-event [event-type event-data]
@@ -20,7 +23,10 @@
 
 
 
-(def ^:private token (delay (string/trim (slurp "discord-api-token"))))
+(def ^:private token (delay (try (string/trim (slurp "discord-api-token"))
+                                 (catch Exception _))))
+
+(def ^:private help-text (slurp (io/resource "cljqbot/discord-help.md")))
 
 ;; state will look like this
 ;  {:connection connection-ch
@@ -34,16 +40,18 @@
 
 
 (defn ^:private me?
-  "Returns whether or not the given user/id is this bot."
+  "Returns whether the given user/id is this bot."
   [user-or-id]
   (let [bot-id (:id @state)]
     (or (= user-or-id bot-id)
         (= (:id user-or-id) bot-id))))
 
 (defn ^:private mentioned?
-  "Returns whether or not this bot has been mentioned in the content."
-  [content]
-  (some #(string/includes? content %) (:mentions @state)))
+  "Returns whether this bot has been mentioned in the content."
+  [event_data]
+  (let [me (:id @state)]
+    (some->> (:mentions event_data)
+             (some #(= me (:id %))))))
 
 
 (defn ^:private on-ready
@@ -55,17 +63,56 @@
                        (str "<@" (:id user) ">")})))
 
 
+(defn ^:private send-message
+  [channel-id message]
+  (m/create-message! (:messaging @state) channel-id :content message))
+
+
+(defmulti ^:private run-command
+  "Implement for supported commands"
+  (fn [_channel-id & [fn-sym]]
+    fn-sym))
+
+;; sends a message about available commands
+(defmethod run-command 'help
+  [channel-id _]
+  (send-message channel-id help-text))
+
+;; sends a response for unknown commands
+(defmethod run-command :default
+  [channel-id cmd-sym & _args]
+  (send-message channel-id (str "I don't know the command `" cmd-sym "`.")))
+
+
+(defn ^:private try-command
+  [channel-id code-string]
+  (let [code (try (edn/read-string code-string)
+                  (catch Exception _))]
+    (if-not code
+      (send-message channel-id (str "Error. Message must contain valid EDN, but doesn't:\n```\n" code-string "\n```"))
+      (try
+        (apply run-command channel-id code)
+        (catch Exception e
+          (st/print-cause-trace e)
+          (send-message channel-id (str "Something went wrong...")))))))
+
+
 (defn ^:private send-quote
-  [_event-type {:keys [channel-id content author] :as _event-data}]
+  [channel-id]
+  (send-message channel-id (format/discord-markdown (quotes/random-quote))))
+
+
+(defn ^:private on-message
+  [_event-type {:keys [author channel-id content] :as event-data}]
   (when (and (not (me? author))
-             (mentioned? content))
-    (m/create-message!
-      (:messaging @state) channel-id
-      :content (format/discord-markdown (quotes/random-quote)))))
+             (mentioned? event-data))
+    (if-let [code-index (string/index-of content "!(")]
+      (try-command channel-id (subs content (inc code-index)))
+      (send-quote channel-id))))
 
 
 (def ^:private handlers
-  {:message-create [#'send-quote]
+  {:message-create [#'on-message]
    :ready          [#'on-ready]})
 
 
@@ -81,17 +128,18 @@
 
 (defn start-bot!
   []
-  (log/info (str "Called cljqbot.discord/start-bot!"))
-  (future
-    (when (nil? @state)
-      (let [event-ch (a/chan 100)
-            connection-ch (c/connect-bot! @token event-ch)
-            messaging-ch (m/start-connection! @token)
-            init-state {:connection connection-ch
-                        :event      event-ch
-                        :messaging  messaging-ch}]
-        (reset! state init-state)
-        (try
-          (e/message-pump! event-ch (partial e/dispatch-handlers #'handlers))
-          (finally
-            (stop-bot!)))))))
+  (when @token
+    (log/info (str "Called cljqbot.discord/start-bot!"))
+    (future
+      (when (nil? @state)
+        (let [event-ch (a/chan 100)
+              connection-ch (c/connect-bot! @token event-ch)
+              messaging-ch (m/start-connection! @token)
+              init-state {:connection connection-ch
+                          :event event-ch
+                          :messaging messaging-ch}]
+          (reset! state init-state)
+          (try
+            (e/message-pump! event-ch (partial e/dispatch-handlers #'handlers))
+            (finally
+              (stop-bot!))))))))

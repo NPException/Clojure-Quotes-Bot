@@ -1,7 +1,7 @@
 (ns cljqbot.quotes
   (:require [clojure.string :as string]
             [clojure.walk :as walk]
-            [clj-time.core :as t])
+            [tick.core :as t])
   (:import [clojure.lang IDeref]))
 
 (defonce requested (atom 0)) ; how many quotes were delivered
@@ -41,7 +41,7 @@
 
 
 (def ^:private clj-quotes
-  (cached fetch-quotes (-> 2 t/hours t/in-millis)))
+  (cached fetch-quotes (-> 24 (t/new-duration :hours) t/millis)))
 
 
 (defn random-quote
