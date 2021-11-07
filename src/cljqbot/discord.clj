@@ -6,10 +6,10 @@
             [discljord.messaging :as m]
             [discljord.events :as e]
             [cljqbot.format :as format]
-            [clojure.stacktrace :as st]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.string :as string]))
+            [clojure.string :as string])
+  (:import (java.util Date)))
 
 #_(defn ^:private log-event [event-type event-data]
   (try
@@ -68,6 +68,11 @@
   (m/create-message! (:messaging @state) channel-id :content message))
 
 
+(defn ^:private send-quote
+  [channel-id]
+  (send-message channel-id (format/discord-markdown (quotes/random-quote))))
+
+
 (defmulti ^:private run-command
   "Implement for supported commands"
   (fn [_channel-id & [fn-sym]]
@@ -81,7 +86,85 @@
 ;; sends a response for unknown commands
 (defmethod run-command :default
   [channel-id cmd-sym & _args]
-  (send-message channel-id (str "I don't know the command `" cmd-sym "`.")))
+  (send-message channel-id (str "Unknown command: `" cmd-sym "`.")))
+
+
+(defn ^:private in-ms [interval unit]
+  (case unit
+    :minutes (* interval 60000)
+    :hours (* interval 3600000)))
+
+(defn ^:private bump-schedule
+  [^Date now [channel-id {:keys [^Date next interval unit] :as schedule}]]
+  (let [now-ms (.getTime now)
+        increment (in-ms interval unit)
+        future-ms (->> (iterate #(+ % increment) (.getTime next)) ;; find the first scheduled time that lies in the future
+                       (some #(when (> % now-ms) %)))]
+    [channel-id (assoc schedule :next (Date. ^long future-ms))]))
+
+(defn ^:private trigger-schedule?
+  [^Date now entry]
+  (.after now (:next (val entry))))
+
+;; each map entry is of the form [channel-id {:next #inst "2021-11-07T10:40:24.642-00:00", :unit :hours, :interval 2}]
+(defonce schedules (atom {}))
+
+(defn ^:private process-scheduled-quotes!
+  []
+  (let [now (Date.)
+        updated-schedules (into {}
+                                (comp (filter #(trigger-schedule? now %))
+                                      (map #(bump-schedule now %)))
+                                @schedules)]
+    (doseq [[channel-id] updated-schedules]
+      (send-quote channel-id))
+    (swap! schedules
+           #(reduce-kv
+              (fn [acc k v]
+                (cond-> acc
+                  (contains? acc k) (assoc k v)))       ;; don't update keys that were removed in the meantime
+              %
+              updated-schedules))))
+
+;; start a thread to check regularly if any scheduled quotes need to be sent
+(defonce ^:private schedule-processing-thread
+  (doto (Thread. ^Runnable (fn []
+                             (while true
+                               (when @state
+                                 (try (#'process-scheduled-quotes!)
+                                      (catch Exception _)))
+                               (Thread/sleep 3000))))
+    (.setName "scheduled-quotes-processing")
+    (.setDaemon true)
+    (.start)))
+
+;; sends quotes at fixed intervals
+(defmethod run-command 'start-schedule
+  [channel-id _ interval unit]
+  (case unit
+    (:minutes :hours)
+    (if (int? interval)
+      (do (swap! schedules assoc channel-id {:next (Date.), :interval interval, :unit unit})
+          (send-message channel-id (str "Roger. I'll post a quote in this channel every " interval " " (name unit) ".")))
+      (send-message channel-id (str "Error. interval must be a whole number, but was: `" (type interval) "`")))
+    ;;else
+    (send-message channel-id (str "Error. Unit was `" unit "`, but must be one of:\n"
+                                  "```clojure\n" (pr-str [:minutes :hours]) "\n```"))))
+
+;; shows currently scheduled quotes
+(defmethod run-command 'show-schedule
+  [channel-id _]
+  (if-let [scheduled (get @schedules channel-id)]
+    (send-message channel-id (str "Quotes schedule for this channel:\n```clojure\n"
+                                  (pr-str scheduled)
+                                  "\n```"))
+    (send-message channel-id "There are no scheduled quotes for this channel.")))
+
+;; stops scheduled quotes
+(defmethod run-command 'stop-schedule
+  [channel-id _]
+  (do (swap! schedules dissoc channel-id)
+      (send-message channel-id "Stopped scheduled quotes for this channel.")))
 
 
 (defn ^:private try-command
@@ -92,14 +175,8 @@
       (send-message channel-id (str "Error. Message must contain valid EDN, but doesn't:\n```\n" code-string "\n```"))
       (try
         (apply run-command channel-id code)
-        (catch Exception e
-          (st/print-cause-trace e)
+        (catch Exception _
           (send-message channel-id (str "Something went wrong...")))))))
-
-
-(defn ^:private send-quote
-  [channel-id]
-  (send-message channel-id (format/discord-markdown (quotes/random-quote))))
 
 
 (defn ^:private on-message
